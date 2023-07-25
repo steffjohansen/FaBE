@@ -1,5 +1,5 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
-
+import ssl
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -22,4 +22,8 @@ class handler(BaseHTTPRequestHandler):
         
 
 with HTTPServer(('', 8080), handler) as server:
+    #sslctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    #sslctx.check_hostname = False
+    #sslctx.load_cert_chain(certfile='../../FaBE_keys/cert.pem', keyfile='../../FaBE_keys/key.pem')
+    #server.socket = sslctx.wrap_socket(server.socket, server_side=True)
     server.serve_forever()
